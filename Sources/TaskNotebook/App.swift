@@ -131,76 +131,53 @@ struct ContentView: View {
                     .buttonStyle(.plain).foregroundStyle(.blue)
                 }.padding(18)
             }.navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 260)
-        } content: {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text(filter?.hasPrefix("tag:") == true ? "#" + String(filter!.dropFirst(4)) : filter == "all" ? "所有任务" : TaskStatus(rawValue: filter ?? "")?.label ?? "当前任务").font(.title2.bold())
-                        Text("\(visible.count) 个任务 · 按最近更新排序").font(.caption).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Button(action: newTask) { Image(systemName: "plus") }.help("新建任务 ⌘N")
-                }.padding(20)
-                VStack(alignment: .leading, spacing: 10) {
-                    Picker("标签", selection: $filterTag) {
-                        Text("全部标签").tag("")
-                        ForEach(tagOptions, id: \.self) { Text($0).tag($0) }
-                        if !filterTag.isEmpty && !tagOptions.contains(filterTag) { Text(filterTag + "（已无任务）").tag(filterTag) }
-                    }
-                    Toggle("按时间筛选", isOn: $filterDates).toggleStyle(.switch).controlSize(.small)
-                    if filterDates {
-                        DatePicker("从", selection: $dateFrom, displayedComponents: .date)
-                        DatePicker("至", selection: $dateThrough, displayedComponents: .date)
-                        if invalidDateRange { Text("截止日期不能早于起始日期").font(.caption).foregroundStyle(.red) }
-                        else { Text("包含截止日，匹配重叠时段；未设置时间的任务不参与。").font(.caption2).foregroundStyle(.secondary) }
-                    }
-                    if filterDates || !filterTag.isEmpty {
-                        Button("清除时间和标签筛选") { filterDates = false; filterTag = "" }
-                            .font(.caption)
-                    }
-                }.padding(.horizontal, 20).padding(.bottom, 14)
-                Divider()
-                if visible.isEmpty {
-                    ContentUnavailableView { Label((search.isEmpty && !filterDates && filterTag.isEmpty) ? "给任务一个位置" : "没有匹配的任务", systemImage: "tray") } description: { Text((search.isEmpty && !filterDates && filterTag.isEmpty) ? "把进行中的工作记下来，随时知道下一步。" : "调整时间、标签或搜索条件。") } actions: { if search.isEmpty { Button("新建任务", action: newTask).buttonStyle(.borderedProminent) } }
-                } else {
-                    List(selection: $selection) {
-                        ForEach(visible) { task in
-                            VStack(alignment: .leading, spacing: 10) {
-                                HStack(alignment: .top) { Image(systemName: task.status.icon).foregroundStyle(task.status.color); Text(task.title).font(.system(size: 14, weight: .semibold)).lineLimit(2); Spacer() }
-                                Text(task.progress.isEmpty ? (task.goal.isEmpty ? "还没有进展记录" : task.goal) : task.progress).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(2)
-                                if !task.tags.isEmpty { TagChips(tags: task.tags) }
-                                HStack {
-                                    Text(task.status.label).foregroundStyle(task.status.color)
-                                    ForEach(Array(Set(task.sessions.map(\.tool))).sorted(), id: \.self) { tool in
-                                        AgentToolIcon(tool: tool, size: 16)
-                                    }
-                                    Spacer()
-                                    Text(task.updatedAt, style: .relative).lineLimit(1)
-                                }.font(.system(size: 10))
-                            }.padding(.vertical, 10).tag(task.id)
-                        }
-                    }.listStyle(.inset)
-                }
-            }.navigationSplitViewColumnWidth(min: 280, ideal: 340, max: 430)
         } detail: {
-            if showTimeline {
-                TaskTimeline(tasks: visible) { task in selection = task.id; showTimeline = false }
-            } else if let task = model.tasks.first(where: { $0.id == selection }) {
-                TaskDetail(task: task, edit: { creating = false; editor = task }, remove: { deleting = task })
-            } else {
-                VStack(spacing: 18) {
-                    Image(systemName: "rectangle.and.pencil.and.ellipsis").font(.system(size: 52, weight: .ultraLight)).foregroundStyle(.blue)
-                    Text("把注意力留给下一步").font(.title2.weight(.semibold))
-                    Text("选一个任务，查看进展、工作目录和 Agent 会话。\n多个对话，一处掌握。").multilineTextAlignment(.center).foregroundStyle(.secondary).lineSpacing(5)
-                    Button("新建任务", action: newTask).buttonStyle(.borderedProminent)
-                }.frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
+            VStack(alignment: .leading, spacing: 0) {
+                workspaceHeader
+                Divider().opacity(0.6)
+                if showTimeline {
+                    TaskTimeline(tasks: visible) { task in selection = task.id }
+                } else if visible.isEmpty {
+                    ContentUnavailableView {
+                        Label(model.tasks.isEmpty ? "给任务一个位置" : "没有匹配的任务", systemImage: "square.grid.2x2")
+                    } description: {
+                        Text(model.tasks.isEmpty ? "把工作交给 Agent，把进展留在这里。" : "调整状态、标签、时间或搜索条件。")
+                    } actions: {
+                        Button("新建任务", action: newTask).buttonStyle(.borderedProminent)
+                        if !model.tasks.isEmpty { Button("清除全部筛选") { filter = "all"; filterTag = ""; filterDates = false; search = "" } }
+                    }
+                } else {
+                    ScrollView {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 290, maximum: 460), spacing: 16, alignment: .top)], alignment: .leading, spacing: 16) {
+                            ForEach(visible) { task in
+                                TaskCard(task: task, open: { selection = task.id }, edit: { creating = false; editor = task })
+                            }
+                        }.padding(24)
+                    }
+                }
+            }.background(Color(nsColor: .windowBackgroundColor))
         }
-        .searchable(text: $search, prompt: "搜索任务、目录、会话")
-        .toolbar { ToolbarItem { Button { showTimeline.toggle() } label: { Label(showTimeline ? "任务详情" : "时间线", systemImage: showTimeline ? "list.bullet.rectangle" : "chart.bar.xaxis") } }; ToolbarItem { Button { model.refresh() } label: { Image(systemName: "arrow.clockwise") }.help("刷新") } }
+        .toolbar { ToolbarItem { Button { model.refresh() } label: { Image(systemName: "arrow.clockwise") }.help("刷新") } }
         .onAppear { model.refresh() }
         .onReceive(timer) { _ in model.refresh() }
         .onReceive(NotificationCenter.default.publisher(for: .init("newTask"))) { _ in newTask() }
+        .overlay {
+            if let task = model.tasks.first(where: { $0.id == selection }) {
+                GeometryReader { geometry in
+                    ModalLayer(close: { selection = nil }) {
+                        VStack(spacing: 0) {
+                            HStack {
+                                Label("任务详情", systemImage: "square.text.square").font(.caption).foregroundStyle(.secondary)
+                                Spacer()
+                                Button { selection = nil } label: { Image(systemName: "xmark") }.buttonStyle(.plain).help("关闭详情")
+                            }.padding(.horizontal, 24).padding(.vertical, 16)
+                            Divider()
+                            TaskDetail(task: task, edit: { creating = false; editor = task }, remove: { deleting = task })
+                        }.frame(width: min(780, geometry.size.width - 80), height: min(820, geometry.size.height - 48))
+                    }
+                }
+            }
+        }
         .overlay {
             if let draft = editor {
                 TaskEditor(draft: draft, isNew: creating, dismiss: { editor = nil }) { selection = $0; filter = "all" }
@@ -227,6 +204,51 @@ struct ContentView: View {
                 }
             }
         }
+    }
+    var workspaceTitle: String {
+        if filter?.hasPrefix("tag:") == true { return "#" + String(filter!.dropFirst(4)) }
+        return filter == "all" ? "所有任务" : TaskStatus(rawValue: filter ?? "")?.label ?? "当前任务"
+    }
+    var workspaceHeader: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(workspaceTitle).font(.system(size: 27, weight: .semibold))
+                    Text("\(visible.count) 个任务  ·  最近更新优先").font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Picker("视图", selection: $showTimeline) {
+                    Label("卡片", systemImage: "square.grid.2x2").tag(false)
+                    Label("时间线", systemImage: "chart.bar.xaxis").tag(true)
+                }.pickerStyle(.segmented).frame(width: 178)
+                Button(action: newTask) { Label("新建任务", systemImage: "plus") }.buttonStyle(.borderedProminent).controlSize(.large).tint(.primary)
+            }
+            HStack(spacing: 12) {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                    TextField("搜索任务、目录、会话…", text: $search).textFieldStyle(.plain)
+                    if !search.isEmpty { Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.plain).foregroundStyle(.secondary).help("清除搜索") }
+                }.padding(10).background(.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 8))
+                Picker("标签", selection: $filterTag) {
+                    Text("全部标签").tag("")
+                    ForEach(tagOptions, id: \.self) { Text($0).tag($0) }
+                    if !filterTag.isEmpty && !tagOptions.contains(filterTag) { Text(filterTag + "（已无任务）").tag(filterTag) }
+                }.labelsHidden().frame(width: 150)
+                Toggle(isOn: $filterDates) { Label("时间筛选", systemImage: "calendar") }.toggleStyle(.button)
+                if filterDates || !filterTag.isEmpty || !search.isEmpty {
+                    Button("重置") { filterDates = false; filterTag = ""; search = "" }.buttonStyle(.plain).foregroundStyle(.secondary)
+                }
+            }
+            if filterDates {
+                HStack(spacing: 12) {
+                    DatePicker("从", selection: $dateFrom, displayedComponents: .date).fixedSize()
+                    DatePicker("至", selection: $dateThrough, displayedComponents: .date).fixedSize()
+                    Text(invalidDateRange ? "截止日期不能早于起始日期" : "匹配重叠时段，包含截止日全天")
+                        .font(.caption).foregroundStyle(invalidDateRange ? .red : .secondary)
+                    Spacer(minLength: 0)
+                }
+            }
+        }.padding(24)
     }
     func newTask() { creating = true; editor = TaskItem(title: "") }
     func sidebar(_ title: String, icon: String, tag: String, count: Int, color: Color = .primary) -> some View {
