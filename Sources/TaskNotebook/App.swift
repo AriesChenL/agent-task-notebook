@@ -114,6 +114,7 @@ struct ContentView: View {
     @State private var creating = false
     @State private var deleting: TaskItem?
     @State private var showHelp = false
+    @State private var sidebarVisible = true
     @State private var showTimeline = false
     @State private var filterDates = false
     @State private var dateFrom = Calendar.current.startOfDay(for: Date())
@@ -149,17 +150,18 @@ struct ContentView: View {
         }
     }
     var body: some View {
-        NavigationSplitView {
-            VStack(alignment: .leading, spacing: 22) {
+        HStack(spacing: 0) {
+            if sidebarVisible {
+            VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 12) {
-                    NotebookMark().frame(width: 34, height: 38)
+                    NotebookMark().frame(width: 28, height: 32)
                         .foregroundStyle(.primary).accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 3) {
                         Text("AGENT").font(.system(size: 9, weight: .medium)).tracking(2.4).foregroundStyle(.secondary)
-                        Text("Notebook").font(.system(size: 20, weight: .semibold))
+                        Text("Notebook").font(.system(size: 18, weight: .semibold))
                     }
                 }.accessibilityElement(children: .ignore).accessibilityLabel("Agent Notebook")
-                    .padding(.horizontal, 22).padding(.top, 26).padding(.bottom, 4)
+                    .padding(.horizontal, 18).padding(.top, 16).padding(.bottom, 2)
                 List(selection: $filter) {
                     Section("工作台") {
                         sidebar("当前任务", icon: "square.grid.2x2", tag: "active", count: model.tasks.filter { $0.status.isActive }.count)
@@ -180,14 +182,14 @@ struct ContentView: View {
                         }
                         if model.tasks.allSatisfy({ $0.tags.isEmpty }) { Text("编辑任务即可添加标签").font(.caption).foregroundStyle(.secondary) }
                     }
-                }.listStyle(.sidebar).scrollContentBackground(.hidden)
+                }.listStyle(.sidebar).scrollContentBackground(.hidden).font(.system(size: 12)).environment(\.defaultMinListRowHeight, 28)
                 VStack(alignment: .leading, spacing: 10) {
                     Label("本地保存 · CLI 实时同步", systemImage: "externaldrive").font(.caption).foregroundStyle(.secondary)
                     Button { showHelp = true } label: { Label("让 Agent 接入", systemImage: "terminal") }
                     .buttonStyle(.plain).foregroundStyle(.blue)
                 }.padding(18)
-            }.background(.ultraThinMaterial).navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 260)
-        } detail: {
+            }.frame(width: 200)
+            }
             VStack(alignment: .leading, spacing: 0) {
                 workspaceHeader
 
@@ -210,17 +212,23 @@ struct ContentView: View {
                     }.padding(32).frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ScrollView {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 290, maximum: 460), spacing: 16, alignment: .top)], alignment: .leading, spacing: 16) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 280, maximum: 420), spacing: 12, alignment: .top)], alignment: .leading, spacing: 12) {
                             ForEach(visible) { task in
                                 TaskCard(task: task, open: { selection = task.id }, edit: { creating = false; editor = task })
                             }
-                        }.padding(24)
+                        }.padding(.horizontal, 20).padding(.top, 6).padding(.bottom, 20)
                     }
                 }
             }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .background { WorkspaceBackdrop() }
+                .modifier(WorkspacePanel())
         }
-        .toolbar { ToolbarItem { Button { model.refresh() } label: { Image(systemName: "arrow.clockwise") }.help("刷新") } }
+        .background { FrostedWindowBackground() }
+        .background(WindowChrome())
+        .toolbar {
+            ToolbarItem(placement: .navigation) { Button { sidebarVisible.toggle() } label: { Image(systemName: "sidebar.left") }.help("显示或隐藏侧栏") }
+            ToolbarItem { Button { model.refresh() } label: { Image(systemName: "arrow.clockwise") }.help("刷新") }
+        }
+        .toolbarBackground(.hidden, for: .windowToolbar)
         .onAppear { model.refresh() }
         .onReceive(timer) { _ in model.refresh() }
         .onReceive(NotificationCenter.default.publisher(for: .init("newTask"))) { _ in newTask() }
@@ -273,10 +281,10 @@ struct ContentView: View {
         return filter == "all" ? "所有任务" : TaskStatus(rawValue: filter ?? "")?.label ?? "当前任务"
     }
     var workspaceHeader: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(workspaceTitle).font(.system(size: 24, weight: .semibold))
+                    Text(workspaceTitle).font(.system(size: 22, weight: .semibold))
                     Text("\(visible.count) 个任务  ·  最近更新优先").font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -286,7 +294,7 @@ struct ContentView: View {
                 }.padding(3).background(.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 10))
                 Button(action: newTask) {
                     Label("新建任务", systemImage: "plus").font(.system(size: 12, weight: .semibold))
-                        .padding(.horizontal, 14).frame(height: 34)
+                        .padding(.horizontal, 14).frame(height: 32)
                         .foregroundStyle(.white).background(Color.accentColor, in: RoundedRectangle(cornerRadius: 9))
                 }.buttonStyle(.plain)
 
@@ -296,7 +304,7 @@ struct ContentView: View {
                     Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                     TextField("搜索任务、目录、会话…", text: $search).textFieldStyle(.plain)
                     if !search.isEmpty { Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.plain).foregroundStyle(.secondary).help("清除搜索") }
-                }.padding(.horizontal, 12).frame(height: 36).background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 9))
+                }.padding(.horizontal, 12).frame(height: 32).background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 9))
                 Menu {
                     Button { filterTag = "" } label: { if filterTag.isEmpty { Label("全部标签", systemImage: "checkmark") } else { Text("全部标签") } }
                     ForEach(tagOptions, id: \.self) { tag in
@@ -307,12 +315,12 @@ struct ContentView: View {
                         Image(systemName: "tag").foregroundStyle(.secondary)
                         Text(filterTag.isEmpty ? "全部标签" : filterTag).lineLimit(1)
                         Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary)
-                    }.font(.system(size: 12, weight: .medium)).padding(.horizontal, 12).frame(height: 36)
+                    }.font(.system(size: 12, weight: .medium)).padding(.horizontal, 12).frame(height: 32)
                         .background(.primary.opacity(filterTag.isEmpty ? 0.04 : 0.09), in: RoundedRectangle(cornerRadius: 9))
-                }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().frame(maxWidth: 180)
+                }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().frame(maxWidth: 150)
                 Button { filterDates.toggle() } label: {
                     Label("时间", systemImage: "calendar").font(.system(size: 12, weight: .medium))
-                        .padding(.horizontal, 12).frame(height: 36)
+                        .padding(.horizontal, 12).frame(height: 32)
                         .foregroundStyle(filterDates ? Color.accentColor : .primary)
                         .background(filterDates ? Color.accentColor.opacity(0.1) : .primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 9))
                 }.buttonStyle(.plain).accessibilityLabel("时间筛选").accessibilityValue(filterDates ? "已开启" : "已关闭")
@@ -329,12 +337,12 @@ struct ContentView: View {
                     Spacer(minLength: 0)
                 }
             }
-        }.padding(24)
+        }.padding(.horizontal, 20).padding(.top, 18).padding(.bottom, 16)
     }
     func viewModeButton(_ title: String, icon: String, timeline: Bool) -> some View {
         Button { showTimeline = timeline } label: {
             Label(title, systemImage: icon).font(.system(size: 12, weight: .medium))
-                .padding(.horizontal, 12).frame(height: 28)
+                .padding(.horizontal, 12).frame(height: 26)
                 .foregroundStyle(showTimeline == timeline ? .primary : .secondary)
                 .background {
                     if showTimeline == timeline { RoundedRectangle(cornerRadius: 7).fill(.primary.opacity(0.10)) }
