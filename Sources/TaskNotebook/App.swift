@@ -306,6 +306,27 @@ struct ContentView: View {
                     if !search.isEmpty { Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.plain).foregroundStyle(.secondary).help("清除搜索") }
                 }.padding(.horizontal, 12).frame(height: 32).background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 9))
                 Menu {
+                    Button { selectStatusFilter("all") } label: {
+                        if filter == "all" || filter == nil || filter?.hasPrefix("tag:") == true { Label("全部状态", systemImage: "checkmark") } else { Text("全部状态") }
+                    }
+                    Button { selectStatusFilter("active") } label: {
+                        if filter == "active" { Label("未结束任务", systemImage: "checkmark") } else { Text("未结束任务") }
+                    }
+                    Divider()
+                    ForEach(TaskStatus.allCases, id: \.rawValue) { status in
+                        Button { selectStatusFilter(status.rawValue) } label: {
+                            Label(status.label, systemImage: filter == status.rawValue ? "checkmark" : status.icon)
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 7) {
+                        Image(systemName: "line.3.horizontal.decrease").foregroundStyle(.secondary)
+                        Text(filter == "active" ? "未结束任务" : TaskStatus(rawValue: filter ?? "")?.label ?? "全部状态").lineLimit(1)
+                        Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary)
+                    }.font(.system(size: 12, weight: .medium)).padding(.horizontal, 12).frame(height: 32)
+                        .background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 9))
+                }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().accessibilityLabel("任务状态筛选")
+                Menu {
                     Button { filterTag = "" } label: { if filterTag.isEmpty { Label("全部标签", systemImage: "checkmark") } else { Text("全部标签") } }
                     ForEach(tagOptions, id: \.self) { tag in
                         Button { filterTag = tag } label: { if filterTag == tag { Label(tag, systemImage: "checkmark") } else { Text(tag) } }
@@ -324,8 +345,8 @@ struct ContentView: View {
                         .foregroundStyle(filterDates ? Color.accentColor : .primary)
                         .background(filterDates ? Color.accentColor.opacity(0.1) : .primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 9))
                 }.buttonStyle(.plain).accessibilityLabel("时间筛选").accessibilityValue(filterDates ? "已开启" : "已关闭")
-                if filterDates || !filterTag.isEmpty || !search.isEmpty {
-                    Button("重置") { filterDates = false; filterTag = ""; search = "" }.buttonStyle(.plain).foregroundStyle(.secondary)
+                if filterDates || !filterTag.isEmpty || !search.isEmpty || TaskStatus(rawValue: filter ?? "") != nil {
+                    Button("重置") { filterDates = false; filterTag = ""; search = ""; filter = "all" }.buttonStyle(.plain).foregroundStyle(.secondary)
                 }
             }
             if filterDates {
@@ -338,6 +359,11 @@ struct ContentView: View {
                 }
             }
         }.padding(.horizontal, 20).padding(.top, 18).padding(.bottom, 16)
+    }
+    func selectStatusFilter(_ value: String) {
+        // Preserve the selected sidebar tag when switching to a status scope.
+        if let filter, filter.hasPrefix("tag:") { filterTag = String(filter.dropFirst(4)) }
+        filter = value
     }
     func viewModeButton(_ title: String, icon: String, timeline: Bool) -> some View {
         Button { showTimeline = timeline } label: {
