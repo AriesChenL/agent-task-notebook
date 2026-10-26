@@ -194,14 +194,20 @@ struct ContentView: View {
                 if showTimeline {
                     TaskTimeline(tasks: visible) { task in selection = task.id }
                 } else if visible.isEmpty {
-                    ContentUnavailableView {
-                        Label(model.tasks.isEmpty ? "给任务一个位置" : "没有匹配的任务", systemImage: "square.grid.2x2")
-                    } description: {
-                        Text(model.tasks.isEmpty ? "把工作交给 Agent，把进展留在这里。" : "调整状态、标签、时间或搜索条件。")
-                    } actions: {
-                        Button("新建任务", action: newTask).buttonStyle(.borderedProminent)
-                        if !model.tasks.isEmpty { Button("清除全部筛选") { filter = "all"; filterTag = ""; filterDates = false; search = "" } }
-                    }
+                    VStack(spacing: 14) {
+                        Image(systemName: model.tasks.isEmpty ? "square.stack" : "line.3.horizontal.decrease.circle")
+                            .font(.system(size: 30, weight: .light)).foregroundStyle(.secondary)
+                        Text(model.tasks.isEmpty ? "还没有任务" : "没有符合条件的任务")
+                            .font(.system(size: 18, weight: .semibold))
+                        Text(model.tasks.isEmpty ? "新建一个任务，记录 Agent 的进展。" : filterDates ? "所选日期内没有已设置时间的任务。试试关闭时间筛选。" : "试试其他标签、状态或关键词。")
+                            .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                        if model.tasks.isEmpty {
+                            Button("新建任务", action: newTask).buttonStyle(.borderedProminent)
+                        } else {
+                            Button("清除筛选") { filter = "all"; filterTag = ""; filterDates = false; search = "" }
+                                .buttonStyle(.bordered).controlSize(.large)
+                        }
+                    }.padding(32).frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ScrollView {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 290, maximum: 460), spacing: 16, alignment: .top)], alignment: .leading, spacing: 16) {
@@ -211,7 +217,8 @@ struct ContentView: View {
                         }.padding(24)
                     }
                 }
-            }.background { WorkspaceBackdrop() }
+            }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .background { WorkspaceBackdrop() }
         }
         .toolbar { ToolbarItem { Button { model.refresh() } label: { Image(systemName: "arrow.clockwise") }.help("刷新") } }
         .onAppear { model.refresh() }
@@ -269,7 +276,7 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(workspaceTitle).font(.system(size: 28, weight: .bold, design: .rounded))
+                    Text(workspaceTitle).font(.system(size: 24, weight: .semibold))
                     Text("\(visible.count) 个任务  ·  最近更新优先").font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -315,9 +322,9 @@ struct ContentView: View {
             }
             if filterDates {
                 HStack(spacing: 12) {
-                    DatePicker("从", selection: $dateFrom, displayedComponents: .date).fixedSize()
-                    DatePicker("至", selection: $dateThrough, displayedComponents: .date).fixedSize()
-                    Text(invalidDateRange ? "截止日期不能早于起始日期" : "匹配重叠时段，包含截止日全天")
+                    DatePicker("开始日期", selection: $dateFrom, displayedComponents: .date).controlSize(.small).fixedSize()
+                    DatePicker("结束日期", selection: $dateThrough, displayedComponents: .date).controlSize(.small).fixedSize()
+                    Text(invalidDateRange ? "截止日期不能早于起始日期" : "包含结束日期当天")
                         .font(.caption).foregroundStyle(invalidDateRange ? .red : .secondary)
                     Spacer(minLength: 0)
                 }

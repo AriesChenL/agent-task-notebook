@@ -1,15 +1,8 @@
 import SwiftUI
 
 struct WorkspaceBackdrop: View {
-    @Environment(\.colorScheme) private var scheme
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     var body: some View {
-        ZStack {
-            Color(nsColor: .windowBackgroundColor)
-            if !reduceTransparency {
-                LinearGradient(colors: [Color.cyan.opacity(scheme == .dark ? 0.10 : 0.12), Color.indigo.opacity(0.06), Color.pink.opacity(scheme == .dark ? 0.06 : 0.09)], startPoint: .topLeading, endPoint: .bottomTrailing)
-            }
-        }.ignoresSafeArea()
+        Color(nsColor: .windowBackgroundColor).ignoresSafeArea()
     }
 }
 struct GlassSurface: ViewModifier {
