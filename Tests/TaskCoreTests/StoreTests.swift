@@ -84,6 +84,18 @@ final class StoreTests: XCTestCase {
         XCTAssertTrue(task.overlaps(from: from, until: until))
         XCTAssertFalse(task.overlaps(from: until, until: from))
     }
+    func testCancelledStatusRoundTripAndRestore() throws {
+        let store = temporaryStore(); defer { try? FileManager.default.removeItem(at: store.directory) }
+        let task = try store.create(TaskItem(title: "可取消任务"))
+        let cancelled = try store.update(id: task.id) { $0.status = .cancelled }
+        XCTAssertEqual(try store.list().first?.status, .cancelled)
+        XCTAssertFalse(cancelled.status.isActive)
+        XCTAssertFalse(TaskStatus.done.isActive)
+        XCTAssertTrue(TaskStatus.waiting.isActive)
+        let restored = try store.update(id: task.id) { $0.status = .running }
+        XCTAssertTrue(restored.status.isActive)
+        XCTAssertEqual(restored.title, task.title)
+    }
     func testEmptyTitleRejected() throws {
         let store = temporaryStore(); defer { try? FileManager.default.removeItem(at: store.directory) }
         XCTAssertThrowsError(try store.create(TaskItem(title: "  ")))

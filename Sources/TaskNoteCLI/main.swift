@@ -4,7 +4,7 @@ import TaskCore
 let help = """
 tasknote — Agent 任务记事本
 
-  tasknote list [--status todo|running|waiting|done] [--tag <标签>]
+  tasknote list [--status todo|running|waiting|done|cancelled] [--tag <标签>]
   tasknote show <task-id>
   tasknote add --title <名称> [--status running] [--directory <目录>]
   tasknote update <task-id> [--title ...] [--status ...] [--progress ...] [--next ...]

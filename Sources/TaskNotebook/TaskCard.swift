@@ -12,18 +12,24 @@ struct TaskCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Button(action: open) {
-                VStack(alignment: .leading, spacing: 15) {
+                VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Label(task.status.label, systemImage: task.status.icon)
                             .font(.system(size: 10, weight: .medium)).foregroundStyle(task.status.color)
                             .padding(.horizontal, 8).padding(.vertical, 5)
                             .background(task.status.color.opacity(0.08), in: Capsule())
                         Spacer()
-                        Image(systemName: "arrow.up.right").font(.caption).foregroundStyle(.tertiary)
+                        Text(task.updatedAt.formatted(date: .abbreviated, time: .shortened)).font(.system(size: 10)).foregroundStyle(.secondary)
+                            .help("最后更新：" + task.updatedAt.formatted(date: .abbreviated, time: .shortened))
                     }
-                    Text(task.title).font(.system(size: 17, weight: .semibold)).lineLimit(2).frame(height: 44, alignment: .topLeading)
-                    Text(task.progress.isEmpty ? (task.goal.isEmpty ? "还没有进展记录" : task.goal) : task.progress)
-                        .font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(2).frame(height: 36, alignment: .topLeading)
+                    Text(task.title).font(.system(size: 17, weight: .semibold, design: .rounded)).lineLimit(2).frame(height: 44, alignment: .topLeading)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(task.status == .waiting && !task.nextStep.isEmpty ? "需要你处理" : "最新进展")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(task.status == .waiting && !task.nextStep.isEmpty ? .orange : .secondary)
+                        Text(task.status == .waiting && !task.nextStep.isEmpty ? task.nextStep : (task.progress.isEmpty ? (task.goal.isEmpty ? "还没有进展记录" : task.goal) : task.progress))
+                            .font(.system(size: 12)).foregroundStyle(.primary.opacity(0.85)).lineLimit(2)
+                    }.frame(height: 50, alignment: .topLeading)
                     HStack(spacing: 6) {
                         if tools.isEmpty { Label("尚未关联 Agent", systemImage: "terminal").font(.caption).foregroundStyle(.tertiary) }
                         else {
@@ -42,7 +48,7 @@ struct TaskCard: View {
                         Text(timeLabel).lineLimit(1)
                         Spacer(minLength: 0)
                     }.font(.system(size: 10)).foregroundStyle(.secondary)
-                }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle()).padding(18)
+                }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle()).padding(20)
             }.buttonStyle(.plain).help("查看任务：" + task.title)
             Divider().opacity(0.55)
             HStack(spacing: 8) {
@@ -60,12 +66,10 @@ struct TaskCard: View {
                 Button(action: edit) { Image(systemName: "square.and.pencil") }.buttonStyle(.plain).help("编辑任务").accessibilityLabel("编辑任务 " + task.title)
             }.font(.system(size: 11)).padding(.horizontal, 18).padding(.vertical, 13)
         }
-        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(.primary.opacity(hovering ? 0.20 : 0.09), lineWidth: 1))
-        .shadow(color: .black.opacity(hovering ? 0.06 : 0.02), radius: hovering ? 10 : 3, y: 2)
+        .notebookGlass(radius: 24)
+        .overlay(RoundedRectangle(cornerRadius: 24).stroke(.primary.opacity(hovering ? 0.16 : 0.04), lineWidth: 1))
         .onHover { hovering = $0 }
         .onChange(of: task.directory) { _, _ in copied = false }
-        .animation(.easeOut(duration: 0.15), value: hovering)
     }
     var timeLabel: String {
         let formatter = DateFormatter(); formatter.dateFormat = "MM/dd HH:mm"

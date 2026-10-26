@@ -43,4 +43,9 @@ with tempfile.TemporaryDirectory(prefix='tasknote-smoke-') as directory:
     assert result.returncode == 1 and cli('show', key) == before
     cli('update', key, '--start', '', '--end', '')
     assert cli('show', key).get('startAt') is None
+    cli('update', key, '--status', 'cancelled')
+    assert cli('show', key)['status'] == 'cancelled'
+    assert len(cli('list', '--status', 'cancelled')) == 1
+    cli('update', key, '--status', 'running')
+    assert not cli('list', '--status', 'cancelled')
     print('CLI smoke passed: CRUD, sessions, JSON, validation, 24 cross-process concurrent updates')

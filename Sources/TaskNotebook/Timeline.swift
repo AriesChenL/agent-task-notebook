@@ -4,14 +4,18 @@ import TaskCore
 struct TaskTimeline: View {
     let tasks: [TaskItem]
     let select: (TaskItem) -> Void
-    var scheduled: [TaskItem] { tasks.filter { $0.startAt != nil || $0.endAt != nil }.sorted { ($0.startAt ?? $0.endAt!) < ($1.startAt ?? $1.endAt!) } }
-    var unscheduled: [TaskItem] { tasks.filter { $0.startAt == nil && $0.endAt == nil } }
-    var bounds: ClosedRange<Date> {
+    let scheduled: [TaskItem]
+    let unscheduled: [TaskItem]
+    let bounds: ClosedRange<Date>
+    init(tasks: [TaskItem], select: @escaping (TaskItem) -> Void) {
+        self.tasks = tasks; self.select = select
+        scheduled = tasks.filter { $0.startAt != nil || $0.endAt != nil }.sorted { ($0.startAt ?? $0.endAt!) < ($1.startAt ?? $1.endAt!) }
+        unscheduled = tasks.filter { $0.startAt == nil && $0.endAt == nil }
         let points = tasks.flatMap { [$0.startAt, $0.endAt].compactMap { $0 } }
         let first = points.min() ?? Date()
         let last = points.max() ?? first
         let padding = max(last.timeIntervalSince(first) * 0.05, 1800)
-        return first.addingTimeInterval(-padding)...last.addingTimeInterval(padding)
+        bounds = first.addingTimeInterval(-padding)...last.addingTimeInterval(padding)
     }
     static func duration(_ seconds: TimeInterval) -> String {
         let minutes = Int(max(0, seconds) / 60)
@@ -44,7 +48,7 @@ struct TaskTimeline: View {
         }.padding(24)
     }
     func chart(chartWidth: CGFloat) -> some View {
-                        VStack(alignment: .leading, spacing: 0) {
+                        LazyVStack(alignment: .leading, spacing: 0) {
                             if !scheduled.isEmpty {
                                 HStack(spacing: 16) {
                                     Text("任务 / 时长").font(.caption).foregroundStyle(.secondary).frame(width: 200, alignment: .leading)

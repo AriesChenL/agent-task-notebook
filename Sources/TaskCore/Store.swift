@@ -2,9 +2,10 @@ import Foundation
 import Darwin
 
 public enum TaskStatus: String, Codable, CaseIterable, Sendable {
-    case todo, running, waiting, done
-    public var label: String { switch self { case .todo: "待开始"; case .running: "进行中"; case .waiting: "等我处理"; case .done: "已完成" } }
-    public var icon: String { switch self { case .todo: "circle"; case .running: "circle.lefthalf.filled"; case .waiting: "hand.raised.fill"; case .done: "checkmark.circle.fill" } }
+    case todo, running, waiting, done, cancelled
+    public var isActive: Bool { self != .done && self != .cancelled }
+    public var label: String { switch self { case .todo: "待开始"; case .running: "进行中"; case .waiting: "等我处理"; case .done: "已完成"; case .cancelled: "已取消" } }
+    public var icon: String { switch self { case .todo: "circle"; case .running: "circle.lefthalf.filled"; case .waiting: "hand.raised.fill"; case .done: "checkmark.circle.fill"; case .cancelled: "xmark.circle.fill" } }
 }
 public struct AgentSession: Identifiable, Codable, Equatable, Sendable {
     public var id = UUID().uuidString
