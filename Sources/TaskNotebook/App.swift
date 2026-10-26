@@ -543,15 +543,21 @@ struct TaskEditor: View {
         VStack(spacing: 0) {
             HStack { Text(isNew ? "新建任务" : "编辑任务").font(.title3.bold()); Spacer(); Button("取消") { requestClose() }; Button("保存") { addTags(); if model.save(draft, isNew: isNew) { saved(draft.id); dismiss() } else { saveError = model.error; model.error = nil } }.buttonStyle(.borderedProminent).keyboardShortcut("s").disabled(draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }.padding(20)
             Divider()
-            Form {
-                Section("任务") {
-                    TextField("名称", text: $draft.title)
-                    Picker("状态", selection: $draft.status) { ForEach(TaskStatus.allCases, id: \.self) { Text($0.label).tag($0) } }
-                    TextField("目标 / 备注", text: $draft.goal, axis: .vertical).lineLimit(2...5)
-                    TextField("最新进展", text: $draft.progress, axis: .vertical).lineLimit(2...5)
-                    TextField("下一步 / 需要我做", text: $draft.nextStep, axis: .vertical).lineLimit(2...4)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                EditorSection("任务") {
+                    EditorField("任务名称", text: $draft.title)
+                    HStack {
+                        Text("任务状态").font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
+                        Spacer()
+                        Picker("状态", selection: $draft.status) { ForEach(TaskStatus.allCases, id: \.self) { Text($0.label).tag($0) } }
+                            .labelsHidden().fixedSize()
+                    }
+                    EditorField("目标 / 备注", text: $draft.goal, multiline: true)
+                    EditorField("最新进展", text: $draft.progress, multiline: true)
+                    EditorField("下一步 / 需要我做", text: $draft.nextStep, multiline: true)
                 }
-                Section("任务时间") {
+                EditorSection("任务时间") {
                     Toggle("设置开始时间", isOn: Binding(get: { draft.startAt != nil }, set: { draft.startAt = $0 ? (draft.endAt ?? Date()) : nil }))
                     if draft.startAt != nil {
                         DatePicker("开始时间", selection: Binding(get: { draft.startAt ?? Date() }, set: { draft.startAt = $0 }), displayedComponents: [.date, .hourAndMinute])
@@ -563,9 +569,9 @@ struct TaskEditor: View {
                     if let start = draft.startAt, let end = draft.endAt, end < start { Text("结束时间不能早于开始时间").foregroundStyle(.red) }
                     Text("时间由你或 Agent 设置，改变任务状态不会自动改写时间。显示时区：" + TimeZone.current.identifier).font(.caption).foregroundStyle(.secondary)
                 }
-                Section("自定义标签") {
+                EditorSection("自定义标签") {
                     HStack {
-                        TextField("输入标签，用逗号分隔", text: $tagInput).onSubmit { addTags() }
+                        TextField("输入标签，用逗号分隔", text: $tagInput).textFieldStyle(.plain).padding(10).background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8)).onSubmit { addTags() }
                         Button("添加") { addTags() }.disabled(TaskItem.parseTags(tagInput).isEmpty)
                     }
                     if !draft.tags.isEmpty {
@@ -585,30 +591,31 @@ struct TaskEditor: View {
                         Menu("选择已有标签") { ForEach(suggestions, id: \.self) { tag in Button(tag) { draft.tags.append(tag) } } }
                     }
                 }
-                Section("工作空间") {
-                    HStack { TextField("工作目录", text: $draft.directory); Button("选择…") { let panel = NSOpenPanel(); panel.canChooseDirectories = true; panel.canChooseFiles = false; panel.allowsMultipleSelection = false; let monitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { event in
+                EditorSection("工作空间") {
+                    HStack { EditorField("工作目录", text: $draft.directory); Button("选择…") { let panel = NSOpenPanel(); panel.canChooseDirectories = true; panel.canChooseFiles = false; panel.allowsMultipleSelection = false; let monitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { event in
                         if event.window !== panel { panel.cancel(nil); return nil }
                         return event
                     }
                     defer { if let monitor { NSEvent.removeMonitor(monitor) } }
                     if panel.runModal() == .OK, let url = panel.url { draft.directory = url.path } } }
-                    TextField("分支", text: $draft.branch)
-                    TextField("PR 链接", text: $draft.pr)
+                    EditorField("分支", text: $draft.branch)
+                    EditorField("PR 链接", text: $draft.pr)
                 }
-                Section("关联 Agent 会话") {
+                EditorSection("关联 Agent 会话") {
                     ForEach($draft.sessions) { $session in
                         VStack(alignment: .leading, spacing: 12) {
-                            HStack { AgentToolIcon(tool: session.tool, size: 22); TextField("工具（Claude Code / Codex / 其他）", text: $session.tool); Button(role: .destructive) { draft.sessions.removeAll { $0.id == session.id } } label: { Image(systemName: "trash") } }
-                            TextField("会话名称", text: $session.name)
-                            TextField("职责（实现 / Review / 调查）", text: $session.role)
-                            TextField("会话 ID", text: $session.sessionID)
-                            TextField("会话链接（可选）", text: $session.link)
-                            TextField("会话工作目录（可选）", text: $session.directory)
-                        }.padding(.vertical, 8)
+                            HStack { AgentToolIcon(tool: session.tool, size: 22); EditorField("工具（Claude Code / Codex / 其他）", text: $session.tool); Button(role: .destructive) { draft.sessions.removeAll { $0.id == session.id } } label: { Image(systemName: "trash") } }
+                            EditorField("会话名称", text: $session.name)
+                            EditorField("职责（实现 / Review / 调查）", text: $session.role)
+                            EditorField("会话 ID", text: $session.sessionID)
+                            EditorField("会话链接（可选）", text: $session.link)
+                            EditorField("会话工作目录（可选）", text: $session.directory)
+                        }.padding(14).background(.primary.opacity(0.025), in: RoundedRectangle(cornerRadius: 12))
                     }
                     Button { draft.sessions.append(AgentSession()) } label: { Label("添加会话", systemImage: "plus") }
                 }
-            }.formStyle(.grouped)
+                }.padding(24)
+            }.scrollIndicators(.visible)
         }
     }
 }
